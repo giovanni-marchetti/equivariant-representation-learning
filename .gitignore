@@ -1,0 +1,16 @@
+__pycache__/
+.ipynb_checkpoints/
+data/
+results_MLP/
+sprites_data/
+checkpoints/
+BetaVAE.ipynb 
+lmtrainpreprocessing.ipynb 
+manifold.ipynb 
+platonic_data.ipynb 
+rotations.ipynb 
+shapes_viz.ipynb
+images/
+notebooks/
+.DS_Store
+.vscode/
