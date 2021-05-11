@@ -3,6 +3,7 @@ import urllib.request
 import argparse
 from tqdm import tqdm
 
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, required=True)
 args = parser.parse_args()
