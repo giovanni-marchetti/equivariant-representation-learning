@@ -11,7 +11,7 @@ def PlatonicMerged(N, big=True):
 
 class PlatonicDataset(torch.utils.data.Dataset):
     def __init__(self, platonic, N, big=True, width=64):
-        
+
         self.classes = {'cube':0, 'tetra':1, 'octa':2}
         self.platonic = platonic
 

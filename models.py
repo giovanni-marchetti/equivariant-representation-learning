@@ -10,7 +10,6 @@ from pytorch3d.transforms import matrix_to_quaternion, quaternion_multiply, eule
 
 import numpy as np
 from functools import reduce
-import utils
 import nn_utils
 
 class View(nn.Module):
@@ -23,7 +22,7 @@ class View(nn.Module):
 
 
 class AE(nn.Module):
-    def __init__(self, encoder, decoder, latent_dim, action_dim, encoding='tanh', device='cuda', softmax = True):
+    def __init__(self, encoder, decoder, latent_dim, action_dim, encoding='tanh', device='cuda'):
         super(AE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
@@ -32,7 +31,6 @@ class AE(nn.Module):
         self.encoding = encoding
         self.device = device
 
-        self.softmax = softmax
 
     def encode(self, x):
         encoded =  self.encoder(x)
@@ -58,173 +56,55 @@ class AE(nn.Module):
             return t
         elif self.encoding == 'angle':
             return nn_utils.normalize(z)
+        elif self.encoding == 'trans_angle':
+            rot_part = nn_utils.normalize(z[:,2:])
+            return  torch.cat((z[:, :2], rot_part), -1)
 
 
     def forward(self, x):
         z = self.encode(x)
 
         pose = self.pose_activation(z[:, :self.action_dim])
-        if self.encoding == 'normalize':
-            random_euler = torch.randn(size = (z.size(0), 3)) * np.sqrt(0.1 * 2 * np.pi / 360)
-            random_euler = random_euler.to(self.device)
-            random_quaternion = matrix_to_quaternion(euler_angles_to_matrix(random_euler, 'XYZ'))
-            pose = quaternion_multiply(pose, random_quaternion)
-        if self.softmax:
-            extra = F.softmax(z[:, self.action_dim :], dim=-1)
-        else:
-            extra = z[:, self.action_dim:]
+        extra = z[:, self.action_dim:]
 
         total = torch.cat((pose, extra), -1)
         return self.decode(total), z
 
 
 
-class AE_MNIST(AE):
-    def __init__(self, latent_dim, nc, action_dim, encoding, softmax=True):
+class AE_CNN(AE):                           #Works on 64x64 images
+    def __init__(self, latent_dim, nc, action_dim, encoding):
 
         encoder = nn.Sequential(
-            nn.Conv2d(nc, 64, 4, 2, 1),          # B,  32, 14, 14
+            nn.Conv2d(nc, 64, 4, 2, 1),
             nn.ReLU(True),
-            nn.Conv2d(64, 128, 4, 2, 1),          # B,  32, 7, 7
+            nn.Conv2d(64, 64, 4, 2, 1),
             nn.ReLU(True),
-            nn.Conv2d(128, 128, 3, 1, 1),          # B,  64,  4,  4
+            nn.Conv2d(64, 128, 4, 2, 1),
             nn.ReLU(True),
-            nn.Conv2d(128, 256, 3, 1),            # B, 256,  1,  1
+            nn.Conv2d(128, 128, 4, 2, 1),
             nn.ReLU(True),
-            View([-1, 256 * 5 * 5]),                 # B, 256
-            nn.Linear(256 * 5 * 5, latent_dim),             # B, latent_dim*2
+            nn.Conv2d(128, 256, 4, 1),
+            nn.ReLU(True),
+            View([-1, 256]),
+            nn.Linear(256, latent_dim),
         )
         decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256 * 5 * 5),               # B, 256
-            View((-1, 256, 5, 5)),               # B, 256,  1,  1
+            nn.Linear(latent_dim, 256),
+            View((-1, 256, 1, 1)),
             nn.ReLU(True),
-            nn.ConvTranspose2d(256, 128, 3, 1),      # B,  64,  4,  4
+            nn.ConvTranspose2d(256, 128, 4),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 128, 3, 1, 1), # B,  64,  8,  8
+            nn.ConvTranspose2d(128, 128, 4, 2, 1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), # B,  32, 16, 16
+            nn.ConvTranspose2d(128, 64, 4, 2, 1),
             nn.ReLU(True),
-            nn.ConvTranspose2d(64, 1, 4, 2, 1), # B,  32, 32, 32
+            nn.ConvTranspose2d(64, 64, 4, 2, 1),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, nc, 4, 2, 1),
             nn.Sigmoid()
             )
-        super(AE_MNIST, self).__init__(encoder, decoder, latent_dim, action_dim, encoding, softmax=softmax)
-
-
-class AE_CNN(AE):                           #64x64
-    def __init__(self, latent_dim, nc, action_dim, encoding, softmax=True):
-
-        encoder = nn.Sequential(
-            nn.Conv2d(nc, 64, 4, 2, 1),          # B,  32, 32, 32
-            nn.ReLU(True),
-            nn.Conv2d(64, 64, 4, 2, 1),          # B,  32, 16, 16
-            nn.ReLU(True),
-            nn.Conv2d(64, 128, 4, 2, 1),          # B,  64,  8,  8
-            nn.ReLU(True),
-            nn.Conv2d(128, 128, 4, 2, 1),          # B,  64,  4,  4
-            nn.ReLU(True),
-            nn.Conv2d(128, 256, 4, 1),            # B, 256,  1,  1
-            nn.ReLU(True),
-            View([-1, 256]),                 # B, 256
-            nn.Linear(256, latent_dim),             # B, latent_dim*2
-        )
-        decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256),               # B, 256
-            View((-1, 256, 1, 1)),               # B, 256,  1,  1
-            nn.ReLU(True),
-            nn.ConvTranspose2d(256, 128, 4),      # B,  64,  4,  4
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 128, 4, 2, 1), # B,  64,  8,  8
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), # B,  32, 16, 16
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 64, 4, 2, 1), # B,  32, 32, 32
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, nc, 4, 2, 1),  # B, nc, 64, 64
-            nn.Sigmoid()
-            )
-        super(AE_CNN, self).__init__(encoder, decoder, latent_dim, action_dim, encoding, softmax=softmax)
-
-
-class BetaVAE(nn.Module):
-    def __init__(self, encoder, decoder, latent_dim, beta):
-        super(BetaVAE, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-        self.latent_dim = latent_dim
-        self.use_vae = True
-        self.beta = beta
-
-    def encode(self, x):
-        encoded =  self.encoder(x)
-        return encoded[:, :self.latent_dim], encoded[:, self.latent_dim : ]
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
-        eps = torch.randn_like(std)
-        return mu + eps*std
-
-    def decode(self, z):
-        return self.decoder(z)
-
-    def forward(self, x):                           #Monte Carlo (with one sample)
-        mu, logvar = self.encode(x)
-        if self.use_vae:
-            z = self.reparameterize(mu, logvar)
-        else:
-            z = mu
-        return self.decode(z), mu, logvar, z
-
-    def traverse(self, sample, path):
-        for i, latent  in enumerate(sample):
-            img = self.decode(latent)
-            save_image(img, path + '_' + str(i) + '.png', nrow = len(sample[0]))
-
-    def recon_loss(self, recon_x, x):
-        return F.binary_cross_entropy(recon_x, x, reduction = 'sum')
-
-    def loss_function(self, recon_x, x, mu, logvar, beta):
-        KL_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-        beta_loss = beta * KL_loss
-        return self.recon_loss(recon_x, x), KL_loss
-
-    def full_loss(self, x):
-        recon_x, mu, logvar, z = self.forward(x)
-        return self.loss_function(recon_x, x, mu, logvar, self.beta)
-
-
-class VAE_CNN(BetaVAE):                           #64x64
-    def __init__(self, latent_dim, nc, beta):
-
-        encoder = nn.Sequential(
-            nn.Conv2d(nc, 64, 4, 2, 1),          # B,  32, 32, 32
-            nn.ReLU(True),
-            nn.Conv2d(64, 64, 4, 2, 1),          # B,  32, 16, 16
-            nn.ReLU(True),
-            nn.Conv2d(64, 128, 4, 2, 1),          # B,  64,  8,  8
-            nn.ReLU(True),
-            nn.Conv2d(128, 128, 4, 2, 1),          # B,  64,  4,  4
-            nn.ReLU(True),
-            nn.Conv2d(128, 256, 4, 1),            # B, 256,  1,  1
-            nn.ReLU(True),
-            View([-1, 256]),                 # B, 256
-            nn.Linear(256, 2*latent_dim),             # B, latent_dim*2
-        )
-        decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256),               # B, 256
-            View((-1, 256, 1, 1)),               # B, 256,  1,  1
-            nn.ReLU(True),
-            nn.ConvTranspose2d(256, 128, 4),      # B,  64,  4,  4
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 128, 4, 2, 1), # B,  64,  8,  8
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1), # B,  32, 16, 16
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 64, 4, 2, 1), # B,  32, 32, 32
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, nc, 4, 2, 1),  # B, nc, 64, 64
-            nn.Sigmoid()
-            )
-        super(VAE_CNN, self).__init__(encoder, decoder, latent_dim, beta)
+        super(AE_CNN, self).__init__(encoder, decoder, latent_dim, action_dim, encoding)
 
 
 
