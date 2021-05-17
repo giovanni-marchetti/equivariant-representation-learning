@@ -10,16 +10,16 @@ pip install -f requirements.txt
 ## Data
 
 Sprites:
-python get_data.py --dataset sprites
+`python get_data.py --dataset sprites`
 
 Multi-sprites:
-python get_data.py --dataset multi-sprites
+`python get_data.py --dataset multi-sprites`
 
 Color-shift:
-python get_data.py --dataset colorshift
+`python get_data.py --dataset colorshift`
 
 Platonics:
-python get_data.py --dataset platonics
+`python get_data.py --dataset platonics`
 
 ## Experiments
 
