@@ -24,19 +24,19 @@ Platonics:
 ## Experiments
 
 ### Sprites
-python main.py --dataset 'sprites' --action-dim 3 --extra-dim 2 --model-name sprites --decoder
+`python main.py --dataset 'sprites' --action-dim 3 --extra-dim 2 --model-name sprites --decoder`
 
 ### Color-shift
-python main.py --dataset color-shift --action-dim 3 --extra-dim 2 --model-name color-shift --decoder
+`python main.py --dataset color-shift --action-dim 3 --extra-dim 2 --model-name color-shift --decoder`
 
 ### Multi-sprites
-python main.py --dataset multi-sprites --action-dim 6 --extra-dim 2 --model-name multi-sprites --decoder
+`python main.py --dataset multi-sprites --action-dim 6 --extra-dim 2 --model-name multi-sprites --decoder`
 
 ### Platonics 
-python main.py --dataset 'platonics' --action-dim 4 --extra-dim 2 --model-name platonics --decoder
+`python main.py --dataset 'platonics' --action-dim 4 --extra-dim 2 --model-name platonics --decoder`
 
 ### Platonics with linear action
-python main.py --dataset 'platonics' --action-dim 3 --extra-dim 0 --model-name platonics-naive --decoder --method naive
+`python main.py --dataset 'platonics' --action-dim 3 --extra-dim 0 --model-name platonics-naive --decoder --method naive`
 
 ### Room
-python main.py --dataset room_combined action-dim 4 --extra-dim 2 --model-name room
+`python main.py --dataset room_combined action-dim 4 --extra-dim 2 --model-name room`
