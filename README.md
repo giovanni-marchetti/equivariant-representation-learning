@@ -21,6 +21,16 @@ Color-shift:
 Platonics:
 `python get_data.py --dataset platonics`
 
+### Licenses
+The dataset with the room is constructed using 3D-models from the following sources with licenses:
+https://free3d.com/3d-model/room-48457.html (Personal Use License)
+https://www.cgtrader.com/free-3d-models/interior/hall/hall-room (Royalty Free License)
+https://www.cgtrader.com/free-3d-models/furniture/bed/bed-free8 (Royalty Free License)
+https://free3d.com/3d-model/room-93514.html8 (Personal Use License)
+
+
+
+
 ## Experiments
 
 ### Sprites
